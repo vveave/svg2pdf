@@ -1,7 +1,6 @@
 # svg2pdf
 
-[![Build status](https://github.com/vveave/svg2pdf/workflows/Continuous%20integration/badge.svg)](https://github.com/vveave/svg2pdf/actions)
-[![Documentation](https://img.shields.io/badge/docs.rs-svg2pdf-66c2a5?labelColor=555555&logoColor=white&logo=data:image/svg+xml;base64,PHN2ZyByb2xlPSJpbWciIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDUxMiA1MTIiPjxwYXRoIGZpbGw9IiNmNWY1ZjUiIGQ9Ik00ODguNiAyNTAuMkwzOTIgMjE0VjEwNS41YzAtMTUtOS4zLTI4LjQtMjMuNC0zMy43bC0xMDAtMzcuNWMtOC4xLTMuMS0xNy4xLTMuMS0yNS4zIDBsLTEwMCAzNy41Yy0xNC4xIDUuMy0yMy40IDE4LjctMjMuNCAzMy43VjIxNGwtOTYuNiAzNi4yQzkuMyAyNTUuNSAwIDI2OC45IDAgMjgzLjlWMzk0YzAgMTMuNiA3LjcgMjYuMSAxOS45IDMyLjJsMTAwIDUwYzEwLjEgNS4xIDIyLjEgNS4xIDMyLjIgMGwxMDMuOS01MiAxMDMuOSA1MmMxMC4xIDUuMSAyMi4xIDUuMSAzMi4yIDBsMTAwLTUwYzEyLjItNi4xIDE5LjktMTguNiAxOS45LTMyLjJWMjgzLjljMC0xNS05LjMtMjguNC0yMy40LTMzLjd6TTM1OCAyMTQuOGwtODUgMzEuOXYtNjguMmw4NS0zN3Y3My4zek0xNTQgMTA0LjFsMTAyLTM4LjIgMTAyIDM4LjJ2LjZsLTEwMiA0MS40LTEwMi00MS40di0uNnptODQgMjkxLjFsLTg1IDQyLjV2LTc5LjFsODUtMzguOHY3NS40em0wLTExMmwtMTAyIDQxLjQtMTAyLTQxLjR2LS42bDEwMi0zOC4yIDEwMiAzOC4ydi42em0yNDAgMTEybC04NSA0Mi41di03OS4xbDg1LTM4Ljh2NzUuNHptMC0xMTJsLTEwMiA0MS40LTEwMi00MS40di0uNmwxMDItMzguMiAxMDIgMzguMnYuNnoiPjwvcGF0aD48L3N2Zz4K)](https://docs.rs/svg2pdf/)
+[![Build status](https://github.com/vveave/svg2pdf/actions/workflows/ci.yml/badge.svg)](https://github.com/vveave/svg2pdf/actions/workflows/ci.yml)
 
 Convert SVG files to PDFs.
 
@@ -9,9 +8,7 @@ This crate allows to convert static (i.e. non-interactive) SVG files to
 either standalone PDF files or Form XObjects that can be embedded in another
 PDF file and used just like images.
 
-See the [documentation](https://docs.rs/svg2pdf/latest/svg2pdf/) for a more detailed
-description, including which features are supported and which are not, as well as for
-examples on how to use this library.
+Generate API documentation locally with `cargo doc --workspace --no-deps`.
 
 ## CLI
 
@@ -19,7 +16,7 @@ This crate also contains a command line interface. Install it by running the
 command below:
 
 ```bash
-cargo install svg2pdf-cli
+cargo install --git https://github.com/vveave/svg2pdf.git svg2pdf-cli
 ```
 
 You can then convert SVGs to PDFs by running commands like these:
