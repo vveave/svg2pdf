@@ -56,6 +56,7 @@ Among the unsupported features are currently:
 mod render;
 mod util;
 
+use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 pub use usvg;
@@ -126,6 +127,8 @@ impl Display for ConversionError {
         }
     }
 }
+
+impl Error for ConversionError {}
 
 /// The result type for everything.
 type Result<T> = std::result::Result<T, ConversionError>;

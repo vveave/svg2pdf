@@ -55,9 +55,11 @@ pub fn render(
         ImageKind::SVG(tree) => create_svg_image(tree, chunk, ctx, rc)?,
     };
 
-    let view_box = view_box.unwrap_or(
-        Rect::from_xywh(0.0, 0.0, image_size.width(), image_size.height()).unwrap(),
-    );
+    let view_box = match view_box {
+        Some(view_box) => view_box,
+        None => Rect::from_xywh(0.0, 0.0, image_size.width(), image_size.height())
+            .ok_or(InvalidImage)?,
+    };
 
     content.save_state_checked()?;
 
@@ -84,6 +86,7 @@ pub fn render(
     Ok(())
 }
 
+#[allow(clippy::panic)]
 fn create_transparent_image(
     chunk: &mut Chunk,
     ctx: &mut Context,
@@ -150,6 +153,7 @@ fn create_transparent_image(
     )
 }
 
+#[allow(clippy::unwrap_used)]
 fn create_raster_image(
     chunk: &mut Chunk,
     ctx: &mut Context,

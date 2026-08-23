@@ -245,7 +245,7 @@ pub fn render(
                     continue;
                 };
 
-                let name = font_names.get(&font.reference).unwrap();
+                let name = font_names.get(&font.reference).ok_or(InvalidFont(font.id))?;
 
                 // TODO: Remove unwraps and switch to error-based handling.
                 // NOTE(laurmaedje): If it can't happen, I think a panic is
@@ -253,7 +253,8 @@ pub fn render(
                 // svg2pdf.
                 let glyph_id =
                     u16::try_from(glyph.id.0).map_err(|_| InvalidFont(font.id))?;
-                let cid = font.glyph_remapper.get(glyph_id).unwrap();
+                let cid =
+                    font.glyph_remapper.get(glyph_id).ok_or(InvalidFont(font.id))?;
                 let ts = glyph
                     .outline_transform()
                     .pre_scale(font.units_per_em as f32, font.units_per_em as f32)
@@ -408,7 +409,7 @@ fn subset_tag<T: Hash>(glyphs: &T) -> String {
         *l = b'A' + (hash % BASE) as u8;
         hash /= BASE;
     }
-    std::str::from_utf8(&letter).unwrap().into()
+    String::from_utf8_lossy(&letter).into_owned()
 }
 
 /// Calculate a 128-bit siphash of a value.

@@ -23,6 +23,12 @@ pub fn render(
     initial_opacity: Option<Opacity>,
     rc: &mut ResourceContainer,
 ) -> Result<()> {
+    // A singular transform collapses the entire group and cannot produce a
+    // valid PDF XObject bounding box.
+    if group.transform().invert().is_none() {
+        return Ok(());
+    }
+
     #[cfg(feature = "filters")]
     if !group.filters().is_empty() {
         return filter::render(group, chunk, content, ctx, rc);
@@ -88,7 +94,7 @@ fn create_x_object(
     let pdf_bbox = group
         .layer_bounding_box()
         .transform(group.transform())
-        .unwrap()
+        .ok_or(UnknownError)?
         .to_pdf_rect();
 
     let mut content = Content::new();

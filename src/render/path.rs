@@ -66,7 +66,9 @@ pub fn draw_path(path_data: impl Iterator<Item = PathSegment>, content: &mut Con
             PathSegment::QuadTo(p1, p2) => {
                 // Since PDF doesn't support quad curves, we need to convert them into
                 // cubic.
-                let prev = p_prev.unwrap();
+                let Some(prev) = p_prev else {
+                    continue;
+                };
                 content.cubic_to(
                     calc(prev.x, p1.x),
                     calc(prev.y, p1.y),
@@ -85,6 +87,23 @@ pub fn draw_path(path_data: impl Iterator<Item = PathSegment>, content: &mut Con
                 content.close_path();
             }
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use usvg::tiny_skia_path::Point;
+
+    #[test]
+    fn draw_path_ignores_quadratic_segment_without_start_point() {
+        let mut content = Content::new();
+
+        draw_path(
+            [PathSegment::QuadTo(Point::from_xy(1.0, 1.0), Point::from_xy(2.0, 2.0))]
+                .into_iter(),
+            &mut content,
+        );
     }
 }
 

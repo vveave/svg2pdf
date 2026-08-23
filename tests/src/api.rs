@@ -34,6 +34,31 @@ fn dpi() {
 }
 
 #[test]
+fn conversion_error_implements_error() {
+    fn assert_error<T: std::error::Error>() {}
+
+    assert_error::<svg2pdf::ConversionError>();
+}
+
+#[test]
+fn degenerate_group_transform_does_not_panic() {
+    let svg = r#"
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">
+            <g opacity="0.5" transform="scale(0)">
+                <rect width="10" height="10" fill="red"/>
+            </g>
+        </svg>
+    "#;
+    let tree = svg2pdf::usvg::Tree::from_str(svg, &usvg::Options::default()).unwrap();
+
+    let pdf =
+        svg2pdf::to_pdf(&tree, ConversionOptions::default(), PageOptions::default())
+            .expect("conversion should handle a degenerate transform");
+
+    assert!(!pdf.is_empty());
+}
+
+#[test]
 fn to_chunk() {
     let mut alloc = Ref::new(1);
     let catalog_id = alloc.bump();

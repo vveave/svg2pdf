@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `ConversionError` now implements `std::error::Error`.
+
+### Fixed
+- Avoided panics when rendering groups with degenerate transforms.
+
 ## [0.14.0] - 2026-08-23
 
 ### Changed

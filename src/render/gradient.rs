@@ -46,6 +46,7 @@ impl GradientProperties {
 /// Turn a (gradient) paint into a shading pattern object. Stop opacities will be ignored and
 /// need to be rendered separately using `create_shading_soft_mask`. The paint
 /// needs to be either a linear gradient or a radial gradient.
+#[allow(clippy::unwrap_used)] // Callers pass only linear or radial gradients.
 pub fn create_shading_pattern(
     paint: &Paint,
     chunk: &mut Chunk,
@@ -59,6 +60,7 @@ pub fn create_shading_pattern(
 /// Return a soft mask that will render the stop opacities of a gradient into a gray scale
 /// shading. If no soft mask is necessary (because no stops have an opacity),
 /// `None` will be returned.
+#[allow(clippy::unwrap_used)] // Callers pass only linear or radial gradients.
 pub fn create_shading_soft_mask(
     paint: &Paint,
     chunk: &mut Chunk,
