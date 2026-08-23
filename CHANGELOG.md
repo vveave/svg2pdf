@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Bumped resvg to v0.46, pdf-writer to v0.14, oxi-png to v10, and miniz_oxide to v0.9.
+- Bumped usvg and resvg to v0.48, tiny-skia to v0.12, fontdb to v0.24, pdf-writer to v0.15, oxi-png to v10, and miniz_oxide to v0.9.
+- Enabled SVGZ support for embedded SVG images.
 
 
 ## [0.13.0]
