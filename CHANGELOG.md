@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- Bumped resvg to v0.46, pdf-writer to v0.14, oxi-png to v10, and miniz_oxide to v0.9.
+## [0.14.0] - 2026-08-23
 
+### Changed
+- Bumped usvg and resvg to v0.48, tiny-skia to v0.12, fontdb to v0.24, pdf-writer to v0.15, oxi-png to v10, and miniz_oxide to v0.9.
+
+### Fixed
+- Restored SVGZ support for embedded SVG images.
 
 ## [0.13.0]
 
@@ -62,8 +66,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (Internal) reworked the test suite.
 - (Internal) synced test suite with resvg test suite.
 
-[Unreleased]: https://github.com/typst/svg2pdf/compare/v0.10.0...HEAD
-[0.10.0]: https://github.com/typst/svg2pdf/compare/v0.9.1...v0.10.0
-[0.11.0]: https://github.com/typst/svg2pdf/compare/v0.10.0...v0.11.0
-[0.12.0]: https://github.com/typst/svg2pdf/compare/v0.11.0...v0.12.0
-[0.13.0]: https://github.com/typst/svg2pdf/compare/v0.12.0...v0.13.0
+[Unreleased]: https://github.com/vveave/svg2pdf/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/vveave/svg2pdf/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/vveave/svg2pdf/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/vveave/svg2pdf/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/vveave/svg2pdf/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/vveave/svg2pdf/compare/v0.9.1...v0.10.0

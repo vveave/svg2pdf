@@ -14,10 +14,10 @@ jobs:
         shell: bash
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Get Rust toolchain
-        uses: dtolnay/rust-toolchain@1.87.0
+        uses: dtolnay/rust-toolchain@1.97.1
 
       - name: Get Rust cache
         uses: Swatinem/rust-cache@v2
@@ -38,7 +38,7 @@ jobs:
 
       - name: Upload artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           path: ./tests/diff
 
@@ -46,8 +46,8 @@ jobs:
     name: Check clippy, formatting, and documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.87.0
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.97.1
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2

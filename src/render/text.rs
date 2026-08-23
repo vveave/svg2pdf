@@ -251,7 +251,9 @@ pub fn render(
                 // NOTE(laurmaedje): If it can't happen, I think a panic is
                 // better. There is no way to handle it as a consumer of
                 // svg2pdf.
-                let cid = font.glyph_remapper.get(glyph.id.0).unwrap();
+                let glyph_id =
+                    u16::try_from(glyph.id.0).map_err(|_| InvalidFont(font.id))?;
+                let cid = font.glyph_remapper.get(glyph_id).unwrap();
                 let ts = glyph
                     .outline_transform()
                     .pre_scale(font.units_per_em as f32, font.units_per_em as f32)
@@ -548,8 +550,10 @@ pub fn fill_fonts(
                         });
 
                         if let Some(ref mut font) = font {
-                            font.glyph_set.insert(g.id.0, g.text.clone());
-                            font.glyph_remapper.remap(g.id.0);
+                            let glyph_id = u16::try_from(g.id.0)
+                                .map_err(|_| InvalidFont(font.id))?;
+                            font.glyph_set.insert(glyph_id, g.text.clone());
+                            font.glyph_remapper.remap(glyph_id);
                         }
 
                         if ctx.options.pdfa && g.id.0 == 0 {

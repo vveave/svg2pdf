@@ -263,7 +263,7 @@ pub fn to_pdf(
 
 /// Convert a [Tree] into a [`Chunk`].
 ///
-/// This method is intended for use in an existing [`pdf-writer`] workflow. It
+/// This method is intended for use in an existing [`pdf_writer`] workflow. It
 /// will always produce a chunk that contains all the necessary objects
 /// to embed the SVG into an existing chunk. This method returns the chunk that
 /// was produced as part of that as well as the object reference of the root XObject.

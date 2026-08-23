@@ -29,11 +29,11 @@ impl TransformExt for Transform {
 
 /// Extension trait to convert a [String] into a [Name]
 pub trait NameExt {
-    fn to_pdf_name(&self) -> Name;
+    fn to_pdf_name(&self) -> Name<'_>;
 }
 
 impl NameExt for String {
-    fn to_pdf_name(&self) -> Name {
+    fn to_pdf_name(&self) -> Name<'_> {
         Name(self.as_bytes())
     }
 }
