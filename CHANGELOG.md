@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ConversionError` now implements `std::error::Error`.
 - Invalid DPI and filter raster scale values now return dedicated conversion errors.
 - Filter rasterization is limited to 16,777,216 pixels to prevent excessive memory use.
+- Expanded public API documentation with option constraints, error behavior, and fully fallible examples; undocumented public items are now denied at compile time.
 
 ### Fixed
 - Avoided panics when rendering groups with degenerate transforms.
