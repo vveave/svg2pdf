@@ -10,6 +10,30 @@ PDF file and used just like images.
 
 Generate API documentation locally with `cargo doc --workspace --no-deps`.
 
+## Library
+
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use svg2pdf::{ConversionOptions, PageOptions};
+
+let svg = std::fs::read_to_string("input.svg")?;
+let tree = svg2pdf::usvg::Tree::from_str(&svg, &svg2pdf::usvg::Options::default())?;
+let pdf = svg2pdf::to_pdf(
+    &tree,
+    ConversionOptions::default(),
+    PageOptions::default(),
+)?;
+std::fs::write("output.pdf", pdf)?;
+# Ok(())
+# }
+```
+
+`PageOptions::dpi` and `ConversionOptions::raster_scale` must be finite and
+greater than zero. Filter effects are rasterized, and temporary filter images
+are limited to 16,777,216 pixels (approximately 64 MiB of raw RGBA data) to
+prevent excessive memory use. Invalid settings and oversized filter regions
+are reported through `ConversionError`.
+
 ## CLI
 
 This crate also contains a command line interface. Install it by running the

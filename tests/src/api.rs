@@ -1,9 +1,8 @@
-#[allow(unused_imports)]
 use {
     crate::render_pdf,
     crate::FONTDB,
     crate::{convert_svg, run_test_impl},
-    pdf_writer::{Content, Finish, Name, Pdf, Rect, Ref, Str},
+    pdf_writer::{Content, Finish, Name, Pdf, Rect, Ref},
     std::collections::HashMap,
     std::path::Path,
     svg2pdf::ConversionOptions,
@@ -31,6 +30,44 @@ fn dpi() {
         convert_svg(Path::new(svg_path), conversion_options, page_options);
     let res = run_test_impl(pdf, actual_image, "api/dpi");
     assert_eq!(res, 0);
+}
+
+#[test]
+fn conversion_error_implements_error() {
+    fn assert_error<T: std::error::Error>() {}
+
+    assert_error::<svg2pdf::ConversionError>();
+}
+
+#[test]
+fn huge_filter_region_returns_error() -> Result<(), Box<dyn std::error::Error>> {
+    let svg = std::fs::read_to_string("svg/resvg/filters/filter/huge-region.svg")?;
+    let options = usvg::Options { fontdb: FONTDB.clone(), ..usvg::Options::default() };
+    let tree = svg2pdf::usvg::Tree::from_str(&svg, &options)?;
+
+    let result =
+        svg2pdf::to_pdf(&tree, ConversionOptions::default(), PageOptions::default());
+
+    assert!(matches!(result, Err(svg2pdf::ConversionError::FilterRegionTooLarge)));
+    Ok(())
+}
+
+#[test]
+fn degenerate_group_transform_does_not_panic() {
+    let svg = r#"
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">
+            <g opacity="0.5" transform="scale(0)">
+                <rect width="10" height="10" fill="red"/>
+            </g>
+        </svg>
+    "#;
+    let tree = svg2pdf::usvg::Tree::from_str(svg, &usvg::Options::default()).unwrap();
+
+    let pdf =
+        svg2pdf::to_pdf(&tree, ConversionOptions::default(), PageOptions::default())
+            .expect("conversion should handle a degenerate transform");
+
+    assert!(!pdf.is_empty());
 }
 
 #[test]

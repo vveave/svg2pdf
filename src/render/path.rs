@@ -66,7 +66,9 @@ pub fn draw_path(path_data: impl Iterator<Item = PathSegment>, content: &mut Con
             PathSegment::QuadTo(p1, p2) => {
                 // Since PDF doesn't support quad curves, we need to convert them into
                 // cubic.
-                let prev = p_prev.unwrap();
+                let Some(prev) = p_prev else {
+                    continue;
+                };
                 content.cubic_to(
                     calc(prev.x, p1.x),
                     calc(prev.y, p1.y),
@@ -110,10 +112,7 @@ pub(crate) fn stroke_path(
     if let Some(path_stroke) = path.stroke() {
         stroke(
             path_stroke,
-            chunk,
-            content,
-            ctx,
-            rc,
+            (chunk, content, ctx, rc),
             operation,
             accumulated_transform,
             path.stroke_bounding_box(),
@@ -125,17 +124,17 @@ pub(crate) fn stroke_path(
 
 /// Prepare the stroke color and then perform some operation (either drawing text or
 /// drawing a path).
-#[allow(clippy::too_many_arguments)]
+pub(crate) type PaintContext<'a> =
+    (&'a mut Chunk, &'a mut Content, &'a mut Context, &'a mut ResourceContainer);
+
 pub(crate) fn stroke(
     stroke: &Stroke,
-    chunk: &mut Chunk,
-    content: &mut Content,
-    ctx: &mut Context,
-    rc: &mut ResourceContainer,
+    paint_ctx: PaintContext,
     operation: impl Fn(&mut Content, &Stroke) -> Result<()>,
     accumulated_transform: Transform,
     bbox: Rect,
 ) -> Result<()> {
+    let (chunk, content, ctx, rc) = paint_ctx;
     let paint = &stroke.paint();
 
     content.save_state_checked()?;
@@ -178,7 +177,7 @@ pub(crate) fn stroke(
             );
 
             if let Some(soft_mask) =
-                gradient::create_shading_soft_mask(paint, chunk, ctx, bbox)
+                gradient::create_shading_soft_mask(paint, chunk, ctx, bbox)?
             {
                 let soft_mask_name = rc.add_graphics_state(soft_mask);
                 content.set_parameters(soft_mask_name.to_pdf_name());
@@ -189,7 +188,7 @@ pub(crate) fn stroke(
                 chunk,
                 ctx,
                 &accumulated_transform,
-            );
+            )?;
             let pattern_name = rc.add_pattern(pattern_ref);
             content.set_stroke_color_space(Pattern);
             content.set_stroke_pattern(None, pattern_name.to_pdf_name());
@@ -236,10 +235,7 @@ pub(crate) fn fill_path(
     if let Some(path_fill) = path.fill() {
         fill(
             path_fill,
-            chunk,
-            content,
-            ctx,
-            rc,
+            (chunk, content, ctx, rc),
             operation,
             accumulated_transform,
             path.bounding_box(),
@@ -251,17 +247,14 @@ pub(crate) fn fill_path(
 
 /// Prepare the fill color and then perform some operation (either drawing text or
 /// drawing a path).
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn fill(
     fill: &Fill,
-    chunk: &mut Chunk,
-    content: &mut Content,
-    ctx: &mut Context,
-    rc: &mut ResourceContainer,
+    paint_ctx: PaintContext,
     operation: impl Fn(&mut Content, &Fill) -> Result<()>,
     accumulated_transform: Transform,
     bbox: Rect,
 ) -> Result<()> {
+    let (chunk, content, ctx, rc) = paint_ctx;
     let paint = &fill.paint();
 
     content.save_state_checked()?;
@@ -291,7 +284,7 @@ pub(crate) fn fill(
             set_opacity_gs(chunk, content, ctx, None, Some(fill.opacity()), rc);
 
             if let Some(soft_mask) =
-                gradient::create_shading_soft_mask(paint, chunk, ctx, bbox)
+                gradient::create_shading_soft_mask(paint, chunk, ctx, bbox)?
             {
                 let soft_mask_name = rc.add_graphics_state(soft_mask);
                 content.set_parameters(soft_mask_name.to_pdf_name());
@@ -302,7 +295,7 @@ pub(crate) fn fill(
                 chunk,
                 ctx,
                 &accumulated_transform,
-            );
+            )?;
             let pattern_name = rc.add_pattern(pattern_ref);
             content.set_fill_color_space(Pattern);
             content.set_fill_pattern(None, pattern_name.to_pdf_name());
@@ -348,4 +341,21 @@ fn set_opacity_gs(
         .stroking_alpha(stroke_opacity)
         .finish();
     content.set_parameters(rc.add_graphics_state(gs_ref).to_pdf_name());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use usvg::tiny_skia_path::Point;
+
+    #[test]
+    fn draw_path_ignores_quadratic_segment_without_start_point() {
+        let mut content = Content::new();
+
+        draw_path(
+            [PathSegment::QuadTo(Point::from_xy(1.0, 1.0), Point::from_xy(2.0, 2.0))]
+                .into_iter(),
+            &mut content,
+        );
+    }
 }

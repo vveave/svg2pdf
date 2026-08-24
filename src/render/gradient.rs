@@ -3,10 +3,10 @@ use pdf_writer::{Chunk, Content, Filter, Finish, Name, Ref};
 use usvg::{Paint, Rect, Transform};
 
 use crate::util::context::Context;
-use crate::util::helper::{
-    bbox_to_non_zero_rect, NameExt, RectExt, StopExt, TransformExt,
-};
+use crate::util::helper::{bbox_to_pdf_rect, NameExt, StopExt, TransformExt};
 use crate::util::resources::ResourceContainer;
+use crate::ConversionError::UnknownError;
+use crate::Result;
 
 /// An alternative representation of a usvg::Stop that allows us to store
 /// both, RGB gradients and grayscale gradients.
@@ -51,9 +51,9 @@ pub fn create_shading_pattern(
     chunk: &mut Chunk,
     ctx: &mut Context,
     accumulated_transform: &Transform,
-) -> Ref {
-    let properties = GradientProperties::try_from_paint(paint).unwrap();
-    shading_pattern(&properties, chunk, ctx, accumulated_transform)
+) -> Result<Ref> {
+    let properties = GradientProperties::try_from_paint(paint).ok_or(UnknownError)?;
+    Ok(shading_pattern(&properties, chunk, ctx, accumulated_transform))
 }
 
 /// Return a soft mask that will render the stop opacities of a gradient into a gray scale
@@ -64,12 +64,12 @@ pub fn create_shading_soft_mask(
     chunk: &mut Chunk,
     ctx: &mut Context,
     bbox: Rect,
-) -> Option<Ref> {
-    let properties = GradientProperties::try_from_paint(paint).unwrap();
+) -> Result<Option<Ref>> {
+    let properties = GradientProperties::try_from_paint(paint).ok_or(UnknownError)?;
     if properties.stops.iter().any(|stop| stop.opacity().get() < 1.0) {
-        Some(shading_soft_mask(&properties, chunk, ctx, bbox))
+        Ok(Some(shading_soft_mask(&properties, chunk, ctx, bbox)))
     } else {
-        None
+        Ok(None)
     }
 }
 
@@ -102,7 +102,7 @@ fn shading_soft_mask(
     let x_object_id = ctx.alloc_ref();
     let shading_ref = shading_function(properties, chunk, ctx, true);
     let shading_name = rc.add_shading(shading_ref);
-    let bbox = bbox_to_non_zero_rect(Some(bbox)).to_pdf_rect();
+    let bbox = bbox_to_pdf_rect(Some(bbox));
 
     let transform = properties.transform;
 
@@ -268,4 +268,36 @@ fn exponential_function<const COUNT: usize>(
 
 fn get_function_range(count: usize) -> Vec<f32> {
     [0.0, 1.0].repeat(count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn non_gradient_paint_returns_unknown_error(
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let paint = Paint::Color(usvg::Color::new_rgb(0, 0, 0));
+        let tree = usvg::Tree::from_str(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>"#,
+            &usvg::Options::default(),
+        )?;
+        let mut ctx = Context::new(&tree, crate::ConversionOptions::default())?;
+        let mut chunk = Chunk::new();
+
+        assert!(matches!(
+            create_shading_pattern(&paint, &mut chunk, &mut ctx, &Transform::default()),
+            Err(UnknownError)
+        ));
+        assert!(matches!(
+            create_shading_soft_mask(
+                &paint,
+                &mut chunk,
+                &mut ctx,
+                tree.root().bounding_box(),
+            ),
+            Err(UnknownError)
+        ));
+        Ok(())
+    }
 }

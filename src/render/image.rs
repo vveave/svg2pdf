@@ -37,27 +37,29 @@ pub fn render(
         ImageKind::JPEG(content) => {
             // JPEGs don't support alphas, so no extra processing is required.
             let image = load_with_format(content, ImageFormat::Jpeg)?;
-            create_raster_image(chunk, ctx, content, Filter::DctDecode, &image, None, rc)
+            create_raster_image(chunk, ctx, content, Filter::DctDecode, &image, None, rc)?
         }
         ImageKind::PNG(content) => {
             let image = load_with_format(content, ImageFormat::Png)?;
-            create_transparent_image(chunk, ctx, &image, rc)
+            create_transparent_image(chunk, ctx, &image, rc)?
         }
         ImageKind::GIF(content) => {
             let image = load_with_format(content, ImageFormat::Gif)?;
-            create_transparent_image(chunk, ctx, &image, rc)
+            create_transparent_image(chunk, ctx, &image, rc)?
         }
         ImageKind::WEBP(content) => {
             let image = load_with_format(content, ImageFormat::WebP)?;
-            create_transparent_image(chunk, ctx, &image, rc)
+            create_transparent_image(chunk, ctx, &image, rc)?
         }
         // SVGs just get rendered recursively.
         ImageKind::SVG(tree) => create_svg_image(tree, chunk, ctx, rc)?,
     };
 
-    let view_box = view_box.unwrap_or(
-        Rect::from_xywh(0.0, 0.0, image_size.width(), image_size.height()).unwrap(),
-    );
+    let view_box = match view_box {
+        Some(view_box) => view_box,
+        None => Rect::from_xywh(0.0, 0.0, image_size.width(), image_size.height())
+            .ok_or(InvalidImage)?,
+    };
 
     content.save_state_checked()?;
 
@@ -89,7 +91,7 @@ fn create_transparent_image(
     ctx: &mut Context,
     image: &DynamicImage,
     rc: &mut ResourceContainer,
-) -> (Rc<String>, Size) {
+) -> crate::Result<(Rc<String>, Size)> {
     let color = image.color();
     let bits = color.bits_per_pixel();
     let channels = color.channel_count() as u16;
@@ -109,7 +111,7 @@ fn create_transparent_image(
             .flat_map(|&Rgb(c)| c)
             .flat_map(|x| x.to_be_bytes())
             .collect(),
-        _ => panic!("unknown number of channels={channels}"),
+        _ => return Err(InvalidImage),
     };
 
     let encoded_mask: Option<Vec<u8>> = if color.has_alpha() {
@@ -158,7 +160,7 @@ fn create_raster_image(
     dynamic_image: &DynamicImage,
     alpha_mask: Option<&[u8]>,
     rc: &mut ResourceContainer,
-) -> (Rc<String>, Size) {
+) -> Result<(Rc<String>, Size)> {
     let color = dynamic_image.color();
     let alpha_mask = alpha_mask.map(|mask_bytes| {
         let soft_mask_id = ctx.alloc_ref();
@@ -173,7 +175,7 @@ fn create_raster_image(
 
     let image_size =
         Size::from_wh(dynamic_image.width() as f32, dynamic_image.height() as f32)
-            .unwrap();
+            .ok_or(InvalidImage)?;
     let image_ref = ctx.alloc_ref();
     let image_name = rc.add_x_object(image_ref);
 
@@ -194,7 +196,7 @@ fn create_raster_image(
         image_x_object.s_mask(soft_mask_id);
     }
     image_x_object.finish();
-    (image_name, image_size)
+    Ok((image_name, image_size))
 }
 
 fn calculate_bits_per_component(color_type: ColorType) -> i32 {
@@ -210,4 +212,35 @@ fn create_svg_image(
     let image_ref = tree_to_xobject(tree, chunk, ctx)?;
     let image_name = rc.add_x_object(image_ref);
     Ok((image_name, tree.size()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_sized_raster_image_returns_invalid_image(
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let tree = Tree::from_str(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>"#,
+            &usvg::Options::default(),
+        )?;
+        let mut ctx = Context::new(&tree, crate::ConversionOptions::default())?;
+        let mut chunk = Chunk::new();
+        let mut resources = ResourceContainer::new();
+        let image = DynamicImage::new_rgba8(0, 0);
+
+        let result = create_raster_image(
+            &mut chunk,
+            &mut ctx,
+            &[],
+            Filter::FlateDecode,
+            &image,
+            None,
+            &mut resources,
+        );
+
+        assert!(matches!(result, Err(InvalidImage)));
+        Ok(())
+    }
 }

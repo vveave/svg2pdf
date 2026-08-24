@@ -27,12 +27,8 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(
-        #[allow(unused_variables)] tree: &Tree,
-        options: ConversionOptions,
-    ) -> Result<Self> {
-        #[allow(unused_mut)]
-        let mut ctx = Self {
+    pub fn new(tree: &Tree, options: ConversionOptions) -> Result<Self> {
+        let ctx = Self {
             ref_allocator: RefAllocator::new(),
             options,
             #[cfg(feature = "text")]
@@ -42,11 +38,19 @@ impl Context {
         };
 
         #[cfg(feature = "text")]
-        if options.embed_text {
-            text::fill_fonts(tree.root(), &mut ctx, tree.fontdb().as_ref())?;
+        {
+            let mut ctx = ctx;
+            if options.embed_text {
+                text::fill_fonts(tree.root(), &mut ctx, tree.fontdb().as_ref())?;
+            }
+            Ok(ctx)
         }
 
-        Ok(ctx)
+        #[cfg(not(feature = "text"))]
+        {
+            let _ = tree;
+            Ok(ctx)
+        }
     }
 
     /// Allocate a new reference.

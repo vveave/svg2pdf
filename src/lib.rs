@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 /*! Convert SVG files to PDFs.
 
 This crate allows to convert static (i.e. non-interactive) SVG files to
@@ -14,9 +16,7 @@ This example reads an SVG file and writes the corresponding PDF back to the disk
 
 ```
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
-use svg2pdf::usvg::fontdb;
 use svg2pdf::{ConversionOptions, PageOptions};
-use std::sync::Arc;
 
 let input = "tests/svg/custom/integration/matplotlib/stairs.svg";
 let output = "target/stairs.pdf";
@@ -26,7 +26,7 @@ let mut options = svg2pdf::usvg::Options::default();
 options.fontdb_mut().load_system_fonts();
 let tree = svg2pdf::usvg::Tree::from_str(&svg, &options)?;
 
-let pdf = svg2pdf::to_pdf(&tree, ConversionOptions::default(), PageOptions::default()).unwrap();
+let pdf = svg2pdf::to_pdf(&tree, ConversionOptions::default(), PageOptions::default())?;
 std::fs::write(output, pdf)?;
 # Ok(()) }
 ```
@@ -56,8 +56,13 @@ Among the unsupported features are currently:
 mod render;
 mod util;
 
+use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
+/// The SVG parser and tree representation used by this crate.
+///
+/// Re-exporting `usvg` ensures callers can construct a compatible [`usvg::Tree`]
+/// without depending on a potentially incompatible version themselves.
 pub use usvg;
 
 use crate::ConversionError::UnknownError;
@@ -76,12 +81,17 @@ static SRGB_ICC_DEFLATED: Lazy<Vec<u8>> =
 static GRAY_ICC_DEFLATED: Lazy<Vec<u8>> =
     Lazy::new(|| deflate(include_bytes!("icc/sGrey-v4.icc")));
 
-/// Options for the resulting PDF file.
+/// Page-level options used by [`to_pdf`].
+///
+/// These options do not apply to [`to_chunk`], which creates a reusable Form
+/// XObject rather than a standalone page.
 #[derive(Copy, Clone)]
 pub struct PageOptions {
     /// The DPI that should be assumed for the conversion to PDF.
     ///
-    /// _Default:_ 72.0
+    /// Must be finite and greater than zero.
+    ///
+    /// _Default:_ `72.0`.
     pub dpi: f32,
 }
 
@@ -91,23 +101,38 @@ impl Default for PageOptions {
     }
 }
 
-/// A error that can appear during conversion.
+impl PageOptions {
+    fn validate(self) -> Result<()> {
+        if !self.dpi.is_finite() || self.dpi <= 0.0 {
+            return Err(ConversionError::InvalidDpi);
+        }
+        Ok(())
+    }
+}
+
+/// An error that can occur during conversion.
 #[derive(Copy, Clone, Debug)]
 pub enum ConversionError {
-    /// The SVG image contains an unrecognized type of image.
+    /// The SVG contains an invalid or unsupported embedded image.
     InvalidImage,
-    /// Text shaping resulted in a .notdef glyph. Can only occur if PDF/A
-    /// processing is enabled.
+    /// Text shaping produced a `.notdef` glyph while PDF/A processing was enabled.
     MissingGlyphs,
-    /// Converting the SVG would require too much nesting depth.
+    /// Converting the SVG would exceed PDF's supported graphics-state nesting depth.
     TooMuchNesting,
-    /// An unknown error occurred during the conversion. This could indicate a bug in the
-    /// svg2pdf.
+    /// The configured page DPI is not finite and greater than zero.
+    InvalidDpi,
+    /// The configured filter raster scale is not finite and greater than zero.
+    InvalidRasterScale,
+    /// A filter would require a temporary raster image larger than 16,777,216 pixels.
+    FilterRegionTooLarge,
+    /// An internal conversion invariant was violated.
+    ///
+    /// Receiving this error can indicate a bug in `svg2pdf`.
     UnknownError,
-    /// An error occurred while subsetting a font.
+    /// The identified font could not be subset for embedding.
     #[cfg(feature = "text")]
     SubsetError(fontdb::ID),
-    /// An error occurred while reading a font.
+    /// The identified font could not be parsed.
     #[cfg(feature = "text")]
     InvalidFont(fontdb::ID),
 }
@@ -118,6 +143,13 @@ impl Display for ConversionError {
             Self::InvalidImage => f.write_str("An unknown type of image appears in the SVG."),
             Self::MissingGlyphs => f.write_str("A piece of text could not be displayed with any font."),
             Self::TooMuchNesting => f.write_str("The SVG's nesting depth is too high."),
+            Self::InvalidDpi => f.write_str("The page DPI must be finite and greater than zero."),
+            Self::InvalidRasterScale => {
+                f.write_str("The filter raster scale must be finite and greater than zero.")
+            }
+            Self::FilterRegionTooLarge => {
+                f.write_str("A filter region exceeds the rasterization pixel limit.")
+            }
             Self::UnknownError => f.write_str("An unknown error occurred during the conversion. This could indicate a bug in svg2pdf"),
             #[cfg(feature = "text")]
             Self::SubsetError(_) => f.write_str("An error occurred while subsetting a font."),
@@ -126,6 +158,8 @@ impl Display for ConversionError {
         }
     }
 }
+
+impl Error for ConversionError {}
 
 /// The result type for everything.
 type Result<T> = std::result::Result<T, ConversionError>;
@@ -144,14 +178,19 @@ pub struct ConversionOptions {
     /// How much raster images of rasterized effects should be scaled up.
     ///
     /// Higher values will lead to better quality, but will increase the size of
-    /// the pdf.
+    /// the pdf. Must be finite and greater than zero. Filter rasterization is
+    /// rejected if the resulting temporary image exceeds the pixel limit.
     ///
-    /// _Default:_ 1.5
+    /// This option has no effect when the `filters` feature is disabled.
+    ///
+    /// _Default:_ `1.5`.
     pub raster_scale: f32,
 
     /// Whether text should be embedded as actual selectable text inside
     /// the PDF. If this option is disabled, text will be converted into paths
     /// before rendering.
+    ///
+    /// This option has no effect when the `text` feature is disabled.
     ///
     /// _Default:_ `true`.
     pub embed_text: bool,
@@ -160,8 +199,19 @@ pub struct ConversionOptions {
     ///
     /// **Note:** This currently only ensures that `to_chunk` does not generate
     /// anything that is forbidden by PDF/A. It does _not_ turn the
-    /// free-standing PDF generated by `to_pdf` into a valid PDF/A.
+    /// free-standing PDF generated by [`to_pdf`] into a valid PDF/A document.
+    ///
+    /// _Default:_ `false`.
     pub pdfa: bool,
+}
+
+impl ConversionOptions {
+    fn validate(self) -> Result<()> {
+        if !self.raster_scale.is_finite() || self.raster_scale <= 0.0 {
+            return Err(ConversionError::InvalidRasterScale);
+        }
+        Ok(())
+    }
 }
 
 impl Default for ConversionOptions {
@@ -177,15 +227,26 @@ impl Default for ConversionOptions {
 
 /// Convert a [`usvg` tree](Tree) into a standalone PDF buffer.
 ///
+/// # Errors
+///
+/// Returns:
+///
+/// - [`ConversionError::InvalidDpi`] when `page_options.dpi` is not finite and
+///   greater than zero.
+/// - [`ConversionError::InvalidRasterScale`] when
+///   `conversion_options.raster_scale` is not finite and greater than zero.
+/// - [`ConversionError::FilterRegionTooLarge`] when rasterizing an SVG filter
+///   would exceed the temporary image pixel limit.
+/// - Another [`ConversionError`] when images, fonts, geometry, or PDF state
+///   cannot be converted safely.
+///
 /// ## Example
 /// The example below reads an SVG file, processes text within it, then converts
 /// it into a PDF and finally writes it back to the file system.
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// use svg2pdf::usvg::fontdb;
 /// use svg2pdf::{ConversionOptions, PageOptions};
-/// use std::sync::Arc;
 ///
 /// let input = "tests/svg/custom/integration/matplotlib/stairs.svg";
 /// let output = "target/stairs.pdf";
@@ -193,10 +254,9 @@ impl Default for ConversionOptions {
 /// let svg = std::fs::read_to_string(input)?;
 /// let mut options = svg2pdf::usvg::Options::default();
 /// options.fontdb_mut().load_system_fonts();
-/// let mut tree = svg2pdf::usvg::Tree::from_str(&svg, &options)?;
+/// let tree = svg2pdf::usvg::Tree::from_str(&svg, &options)?;
 ///
-///
-/// let pdf = svg2pdf::to_pdf(&tree, ConversionOptions::default(), PageOptions::default()).unwrap();
+/// let pdf = svg2pdf::to_pdf(&tree, ConversionOptions::default(), PageOptions::default())?;
 /// std::fs::write(output, pdf)?;
 /// # Ok(()) }
 /// ```
@@ -205,6 +265,8 @@ pub fn to_pdf(
     conversion_options: ConversionOptions,
     page_options: PageOptions,
 ) -> Result<Vec<u8>> {
+    conversion_options.validate()?;
+    page_options.validate()?;
     let mut ctx = Context::new(tree, conversion_options)?;
     let mut pdf = Pdf::new();
 
@@ -274,16 +336,25 @@ pub fn to_pdf(
 /// The resulting object can be used by embedding the chunk into your existing chunk
 /// and renumbering it appropriately.
 ///
+/// # Errors
+///
+/// Returns:
+///
+/// - [`ConversionError::InvalidRasterScale`] when
+///   `conversion_options.raster_scale` is not finite and greater than zero.
+/// - [`ConversionError::FilterRegionTooLarge`] when rasterizing an SVG filter
+///   would exceed the temporary image pixel limit.
+/// - Another [`ConversionError`] when images, fonts, geometry, or PDF state
+///   cannot be converted safely.
+///
 /// ## Example
 /// Write a PDF file with some text and an SVG graphic.
 ///
 /// ```
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use std::collections::HashMap;
-/// use std::sync::Arc;
 /// use svg2pdf;
 /// use pdf_writer::{Content, Finish, Name, Pdf, Rect, Ref, Str};
-/// use svg2pdf::usvg::fontdb;
 ///
 /// // Allocate the indirect reference IDs and names.
 /// let mut alloc = Ref::new(1);
@@ -301,7 +372,7 @@ pub fn to_pdf(
 /// let mut options = svg2pdf::usvg::Options::default();
 /// options.fontdb_mut().load_system_fonts();
 /// let tree = svg2pdf::usvg::Tree::from_str(&svg, &options)?;
-/// let (mut svg_chunk, svg_id) = svg2pdf::to_chunk(&tree, svg2pdf::ConversionOptions::default()).unwrap();
+/// let (mut svg_chunk, svg_id) = svg2pdf::to_chunk(&tree, svg2pdf::ConversionOptions::default())?;
 ///
 /// // Renumber the chunk so that we can embed it into our existing workflow, and also make sure
 /// // to update `svg_id`.
@@ -309,7 +380,9 @@ pub fn to_pdf(
 /// let svg_chunk = svg_chunk.renumber(|old| {
 ///   *map.entry(old).or_insert_with(|| alloc.bump())
 /// });
-/// let svg_id = map.get(&svg_id).unwrap();
+/// let svg_id = *map
+///     .get(&svg_id)
+///     .ok_or_else(|| std::io::Error::other("renumbered SVG reference is missing"))?;
 ///
 /// // Start writing the PDF.
 /// let mut pdf = Pdf::new();
@@ -347,7 +420,6 @@ pub fn to_pdf(
 ///     .transform([300.0, 0.0, 0.0, 225.0, 147.5, 385.0])
 ///     .x_object(svg_name);
 ///
-///
 /// pdf.stream(content_id, &content.finish());
 /// // Write the SVG chunk into the PDF page.
 /// pdf.extend(&svg_chunk);
@@ -360,10 +432,48 @@ pub fn to_chunk(
     tree: &Tree,
     conversion_options: ConversionOptions,
 ) -> Result<(Chunk, Ref)> {
+    conversion_options.validate()?;
     let mut chunk = Chunk::new();
 
     let mut ctx = Context::new(tree, conversion_options)?;
     let x_ref = tree_to_xobject(tree, &mut chunk, &mut ctx)?;
     ctx.write_global_objects(&mut chunk)?;
     Ok((chunk, x_ref))
+}
+
+#[cfg(test)]
+mod option_tests {
+    use super::*;
+
+    fn test_tree() -> std::result::Result<Tree, usvg::Error> {
+        Tree::from_str(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>"#,
+            &usvg::Options::default(),
+        )
+    }
+
+    #[test]
+    fn to_pdf_rejects_invalid_dpi() -> std::result::Result<(), Box<dyn Error>> {
+        let tree = test_tree()?;
+
+        for dpi in [0.0, -1.0, f32::NAN, f32::INFINITY] {
+            let result = to_pdf(&tree, ConversionOptions::default(), PageOptions { dpi });
+            assert!(matches!(result, Err(ConversionError::InvalidDpi)));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn conversion_rejects_invalid_raster_scale() -> std::result::Result<(), Box<dyn Error>>
+    {
+        let tree = test_tree()?;
+
+        for raster_scale in [0.0, -1.0, f32::NAN, f32::INFINITY] {
+            let options =
+                ConversionOptions { raster_scale, ..ConversionOptions::default() };
+            let result = to_chunk(&tree, options);
+            assert!(matches!(result, Err(ConversionError::InvalidRasterScale)));
+        }
+        Ok(())
+    }
 }
