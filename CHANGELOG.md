@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Avoided panics when rendering groups with degenerate transforms.
+- Return conversion errors instead of panicking on invalid gradient or raster image data.
+- Use a valid fallback PDF bounding box when the SVG bounding box is missing or degenerate.
 
 ## [0.14.0] - 2026-08-23
 
