@@ -7,6 +7,8 @@ use crate::util::helper::{
     bbox_to_non_zero_rect, NameExt, RectExt, StopExt, TransformExt,
 };
 use crate::util::resources::ResourceContainer;
+use crate::ConversionError::UnknownError;
+use crate::Result;
 
 /// An alternative representation of a usvg::Stop that allows us to store
 /// both, RGB gradients and grayscale gradients.
@@ -46,32 +48,30 @@ impl GradientProperties {
 /// Turn a (gradient) paint into a shading pattern object. Stop opacities will be ignored and
 /// need to be rendered separately using `create_shading_soft_mask`. The paint
 /// needs to be either a linear gradient or a radial gradient.
-#[allow(clippy::unwrap_used)] // Callers pass only linear or radial gradients.
 pub fn create_shading_pattern(
     paint: &Paint,
     chunk: &mut Chunk,
     ctx: &mut Context,
     accumulated_transform: &Transform,
-) -> Ref {
-    let properties = GradientProperties::try_from_paint(paint).unwrap();
-    shading_pattern(&properties, chunk, ctx, accumulated_transform)
+) -> Result<Ref> {
+    let properties = GradientProperties::try_from_paint(paint).ok_or(UnknownError)?;
+    Ok(shading_pattern(&properties, chunk, ctx, accumulated_transform))
 }
 
 /// Return a soft mask that will render the stop opacities of a gradient into a gray scale
 /// shading. If no soft mask is necessary (because no stops have an opacity),
 /// `None` will be returned.
-#[allow(clippy::unwrap_used)] // Callers pass only linear or radial gradients.
 pub fn create_shading_soft_mask(
     paint: &Paint,
     chunk: &mut Chunk,
     ctx: &mut Context,
     bbox: Rect,
-) -> Option<Ref> {
-    let properties = GradientProperties::try_from_paint(paint).unwrap();
+) -> Result<Option<Ref>> {
+    let properties = GradientProperties::try_from_paint(paint).ok_or(UnknownError)?;
     if properties.stops.iter().any(|stop| stop.opacity().get() < 1.0) {
-        Some(shading_soft_mask(&properties, chunk, ctx, bbox))
+        Ok(Some(shading_soft_mask(&properties, chunk, ctx, bbox)))
     } else {
-        None
+        Ok(None)
     }
 }
 
@@ -270,4 +270,16 @@ fn exponential_function<const COUNT: usize>(
 
 fn get_function_range(count: usize) -> Vec<f32> {
     [0.0, 1.0].repeat(count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn non_gradient_paint_has_no_gradient_properties() {
+        let paint = Paint::Color(usvg::Color::new_rgb(0, 0, 0));
+
+        assert!(GradientProperties::try_from_paint(&paint).is_none());
+    }
 }

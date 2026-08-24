@@ -37,7 +37,7 @@ pub fn render(
         ImageKind::JPEG(content) => {
             // JPEGs don't support alphas, so no extra processing is required.
             let image = load_with_format(content, ImageFormat::Jpeg)?;
-            create_raster_image(chunk, ctx, content, Filter::DctDecode, &image, None, rc)
+            create_raster_image(chunk, ctx, content, Filter::DctDecode, &image, None, rc)?
         }
         ImageKind::PNG(content) => {
             let image = load_with_format(content, ImageFormat::Png)?;
@@ -86,7 +86,6 @@ pub fn render(
     Ok(())
 }
 
-#[allow(clippy::panic)]
 fn create_transparent_image(
     chunk: &mut Chunk,
     ctx: &mut Context,
@@ -153,7 +152,6 @@ fn create_transparent_image(
     )
 }
 
-#[allow(clippy::unwrap_used)]
 fn create_raster_image(
     chunk: &mut Chunk,
     ctx: &mut Context,
@@ -162,7 +160,7 @@ fn create_raster_image(
     dynamic_image: &DynamicImage,
     alpha_mask: Option<&[u8]>,
     rc: &mut ResourceContainer,
-) -> (Rc<String>, Size) {
+) -> Result<(Rc<String>, Size)> {
     let color = dynamic_image.color();
     let alpha_mask = alpha_mask.map(|mask_bytes| {
         let soft_mask_id = ctx.alloc_ref();
@@ -177,7 +175,7 @@ fn create_raster_image(
 
     let image_size =
         Size::from_wh(dynamic_image.width() as f32, dynamic_image.height() as f32)
-            .unwrap();
+            .ok_or(InvalidImage)?;
     let image_ref = ctx.alloc_ref();
     let image_name = rc.add_x_object(image_ref);
 
@@ -198,7 +196,7 @@ fn create_raster_image(
         image_x_object.s_mask(soft_mask_id);
     }
     image_x_object.finish();
-    (image_name, image_size)
+    Ok((image_name, image_size))
 }
 
 fn calculate_bits_per_component(color_type: ColorType) -> i32 {
@@ -214,4 +212,36 @@ fn create_svg_image(
     let image_ref = tree_to_xobject(tree, chunk, ctx)?;
     let image_name = rc.add_x_object(image_ref);
     Ok((image_name, tree.size()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_sized_raster_image_does_not_panic() {
+        let tree = Tree::from_str(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>"#,
+            &usvg::Options::default(),
+        )
+        .unwrap();
+        let mut ctx = Context::new(&tree, crate::ConversionOptions::default()).unwrap();
+        let mut chunk = Chunk::new();
+        let mut resources = ResourceContainer::new();
+        let image = DynamicImage::new_rgba8(0, 0);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            create_raster_image(
+                &mut chunk,
+                &mut ctx,
+                &[],
+                Filter::FlateDecode,
+                &image,
+                None,
+                &mut resources,
+            )
+        }));
+
+        assert!(result.is_ok());
+    }
 }

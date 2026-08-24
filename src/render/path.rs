@@ -90,23 +90,6 @@ pub fn draw_path(path_data: impl Iterator<Item = PathSegment>, content: &mut Con
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use usvg::tiny_skia_path::Point;
-
-    #[test]
-    fn draw_path_ignores_quadratic_segment_without_start_point() {
-        let mut content = Content::new();
-
-        draw_path(
-            [PathSegment::QuadTo(Point::from_xy(1.0, 1.0), Point::from_xy(2.0, 2.0))]
-                .into_iter(),
-            &mut content,
-        );
-    }
-}
-
 /// Draws a stroked path into the content stream.
 pub(crate) fn stroke_path(
     path: &Path,
@@ -197,7 +180,7 @@ pub(crate) fn stroke(
             );
 
             if let Some(soft_mask) =
-                gradient::create_shading_soft_mask(paint, chunk, ctx, bbox)
+                gradient::create_shading_soft_mask(paint, chunk, ctx, bbox)?
             {
                 let soft_mask_name = rc.add_graphics_state(soft_mask);
                 content.set_parameters(soft_mask_name.to_pdf_name());
@@ -208,7 +191,7 @@ pub(crate) fn stroke(
                 chunk,
                 ctx,
                 &accumulated_transform,
-            );
+            )?;
             let pattern_name = rc.add_pattern(pattern_ref);
             content.set_stroke_color_space(Pattern);
             content.set_stroke_pattern(None, pattern_name.to_pdf_name());
@@ -310,7 +293,7 @@ pub(crate) fn fill(
             set_opacity_gs(chunk, content, ctx, None, Some(fill.opacity()), rc);
 
             if let Some(soft_mask) =
-                gradient::create_shading_soft_mask(paint, chunk, ctx, bbox)
+                gradient::create_shading_soft_mask(paint, chunk, ctx, bbox)?
             {
                 let soft_mask_name = rc.add_graphics_state(soft_mask);
                 content.set_parameters(soft_mask_name.to_pdf_name());
@@ -321,7 +304,7 @@ pub(crate) fn fill(
                 chunk,
                 ctx,
                 &accumulated_transform,
-            );
+            )?;
             let pattern_name = rc.add_pattern(pattern_ref);
             content.set_fill_color_space(Pattern);
             content.set_fill_pattern(None, pattern_name.to_pdf_name());
@@ -367,4 +350,21 @@ fn set_opacity_gs(
         .stroking_alpha(stroke_opacity)
         .finish();
     content.set_parameters(rc.add_graphics_state(gs_ref).to_pdf_name());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use usvg::tiny_skia_path::Point;
+
+    #[test]
+    fn draw_path_ignores_quadratic_segment_without_start_point() {
+        let mut content = Content::new();
+
+        draw_path(
+            [PathSegment::QuadTo(Point::from_xy(1.0, 1.0), Point::from_xy(2.0, 2.0))]
+                .into_iter(),
+            &mut content,
+        );
+    }
 }

@@ -173,7 +173,6 @@ impl GroupExt for usvg::Group {
     }
 }
 
-#[allow(clippy::unwrap_used)] // The literal rectangle has finite, non-zero dimensions.
 pub fn bbox_to_non_zero_rect(rect: Option<usvg::Rect>) -> NonZeroRect {
     // Convenience method to not panic if bbox is not well-defined
     rect.and_then(|bb| bb.to_non_zero_rect())
