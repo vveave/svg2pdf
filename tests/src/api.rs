@@ -40,6 +40,19 @@ fn conversion_error_implements_error() {
 }
 
 #[test]
+fn huge_filter_region_returns_error() -> Result<(), Box<dyn std::error::Error>> {
+    let svg = std::fs::read_to_string("svg/resvg/filters/filter/huge-region.svg")?;
+    let options = usvg::Options { fontdb: FONTDB.clone(), ..usvg::Options::default() };
+    let tree = svg2pdf::usvg::Tree::from_str(&svg, &options)?;
+
+    let result =
+        svg2pdf::to_pdf(&tree, ConversionOptions::default(), PageOptions::default());
+
+    assert!(matches!(result, Err(svg2pdf::ConversionError::FilterRegionTooLarge)));
+    Ok(())
+}
+
+#[test]
 fn degenerate_group_transform_does_not_panic() {
     let svg = r#"
         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">

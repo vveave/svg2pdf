@@ -26,7 +26,7 @@ IGNORE_TESTS = {
     # The following test cases need to be excluded due to technical reasons
     # and are not considered as wrong.
     "svg/resvg/filters/feMorphology/huge-radius.svg": "will timeout CI",
-    "svg/resvg/filters/filter/huge-region.svg": "will sigkill",
+    "svg/resvg/filters/filter/huge-region.svg": "covered by api::huge_filter_region_returns_error",
     "svg/resvg/structure/svg/negative-size.svg": "invalid size",
     "svg/resvg/structure/svg/no-size.svg": "invalid size",
     "svg/resvg/structure/svg/zero-size.svg": "invalid size",

@@ -276,7 +276,7 @@ fn run_test(test_name: &str) -> i32 {
 #[test] fn resvg_filters_filter_with_transform_outside_of_canvas() {assert_eq!(run_test("resvg/filters/filter/with-transform-outside-of-canvas"), 0)}
 #[test] fn resvg_filters_filter_in_source_alpha() {assert_eq!(run_test("resvg/filters/filter/in=SourceAlpha"), 0)}
 #[test] fn resvg_filters_filter_on_a_vertical_line() {assert_eq!(run_test("resvg/filters/filter/on-a-vertical-line"), 0)}
-// will sigkill
+// covered by api::huge_filter_region_returns_error
 #[ignore] #[test] fn resvg_filters_filter_huge_region() {assert_eq!(run_test("resvg/filters/filter/huge-region"), 0)}
 #[test] fn resvg_filters_filter_invalid_primitive_1() {assert_eq!(run_test("resvg/filters/filter/invalid-primitive-1"), 0)}
 #[test] fn resvg_filters_filter_in_to_invalid_2() {assert_eq!(run_test("resvg/filters/filter/in-to-invalid-2"), 0)}

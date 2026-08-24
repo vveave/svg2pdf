@@ -20,14 +20,14 @@ pub struct CliArguments {
     pub input: Option<PathBuf>,
     /// Path to write PDF file to.
     pub output: Option<PathBuf>,
-    /// The number of SVG pixels per PDF points.
+    /// The number of SVG pixels per PDF point. Must be finite and greater than zero.
     #[clap(long, default_value = "72.0")]
     pub dpi: f32,
     /// Whether text should be converted to paths
     /// before embedding it into the PDF.
     #[clap(long, short, action=ArgAction::SetTrue)]
     pub text_to_paths: bool,
-    /// How much raster images of rasterized effects should be scaled up.
+    /// How much rasterized effects should be scaled up. Must be finite and greater than zero.
     #[clap(long, default_value = "1.5")]
     pub raster_scale: f32,
 
