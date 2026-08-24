@@ -112,10 +112,7 @@ pub(crate) fn stroke_path(
     if let Some(path_stroke) = path.stroke() {
         stroke(
             path_stroke,
-            chunk,
-            content,
-            ctx,
-            rc,
+            (chunk, content, ctx, rc),
             operation,
             accumulated_transform,
             path.stroke_bounding_box(),
@@ -127,17 +124,17 @@ pub(crate) fn stroke_path(
 
 /// Prepare the stroke color and then perform some operation (either drawing text or
 /// drawing a path).
-#[allow(clippy::too_many_arguments)]
+pub(crate) type PaintContext<'a> =
+    (&'a mut Chunk, &'a mut Content, &'a mut Context, &'a mut ResourceContainer);
+
 pub(crate) fn stroke(
     stroke: &Stroke,
-    chunk: &mut Chunk,
-    content: &mut Content,
-    ctx: &mut Context,
-    rc: &mut ResourceContainer,
+    paint_ctx: PaintContext,
     operation: impl Fn(&mut Content, &Stroke) -> Result<()>,
     accumulated_transform: Transform,
     bbox: Rect,
 ) -> Result<()> {
+    let (chunk, content, ctx, rc) = paint_ctx;
     let paint = &stroke.paint();
 
     content.save_state_checked()?;
@@ -238,10 +235,7 @@ pub(crate) fn fill_path(
     if let Some(path_fill) = path.fill() {
         fill(
             path_fill,
-            chunk,
-            content,
-            ctx,
-            rc,
+            (chunk, content, ctx, rc),
             operation,
             accumulated_transform,
             path.bounding_box(),
@@ -253,17 +247,14 @@ pub(crate) fn fill_path(
 
 /// Prepare the fill color and then perform some operation (either drawing text or
 /// drawing a path).
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn fill(
     fill: &Fill,
-    chunk: &mut Chunk,
-    content: &mut Content,
-    ctx: &mut Context,
-    rc: &mut ResourceContainer,
+    paint_ctx: PaintContext,
     operation: impl Fn(&mut Content, &Fill) -> Result<()>,
     accumulated_transform: Transform,
     bbox: Rect,
 ) -> Result<()> {
+    let (chunk, content, ctx, rc) = paint_ctx;
     let paint = &fill.paint();
 
     content.save_state_checked()?;

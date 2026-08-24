@@ -173,10 +173,12 @@ impl GroupExt for usvg::Group {
     }
 }
 
-pub fn bbox_to_non_zero_rect(rect: Option<usvg::Rect>) -> NonZeroRect {
+pub fn bbox_to_pdf_rect(rect: Option<usvg::Rect>) -> Rect {
     // Convenience method to not panic if bbox is not well-defined
-    rect.and_then(|bb| bb.to_non_zero_rect())
-        .unwrap_or(NonZeroRect::from_xywh(0.0, 0.0, 1.0, 1.0).unwrap())
+    match rect.and_then(|bb| bb.to_non_zero_rect()) {
+        Some(rect) => rect.to_pdf_rect(),
+        None => Rect::new(0.0, 0.0, 1.0, 1.0),
+    }
 }
 
 /// Compress data using the deflate algorithm.
@@ -190,4 +192,14 @@ pub fn clip_to_rect(rect: NonZeroRect, content: &mut Content) {
     content.close_path();
     content.clip_nonzero();
     content.end_path();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_bbox_uses_unit_pdf_rect() {
+        assert_eq!(bbox_to_pdf_rect(None), Rect::new(0.0, 0.0, 1.0, 1.0));
+    }
 }

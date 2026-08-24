@@ -3,9 +3,7 @@ use pdf_writer::{Chunk, Content, Filter, Finish, Name, Ref};
 use usvg::{Paint, Rect, Transform};
 
 use crate::util::context::Context;
-use crate::util::helper::{
-    bbox_to_non_zero_rect, NameExt, RectExt, StopExt, TransformExt,
-};
+use crate::util::helper::{bbox_to_pdf_rect, NameExt, StopExt, TransformExt};
 use crate::util::resources::ResourceContainer;
 use crate::ConversionError::UnknownError;
 use crate::Result;
@@ -104,7 +102,7 @@ fn shading_soft_mask(
     let x_object_id = ctx.alloc_ref();
     let shading_ref = shading_function(properties, chunk, ctx, true);
     let shading_name = rc.add_shading(shading_ref);
-    let bbox = bbox_to_non_zero_rect(Some(bbox)).to_pdf_rect();
+    let bbox = bbox_to_pdf_rect(Some(bbox));
 
     let transform = properties.transform;
 
@@ -277,9 +275,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn non_gradient_paint_has_no_gradient_properties() {
+    fn non_gradient_paint_returns_unknown_error(
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         let paint = Paint::Color(usvg::Color::new_rgb(0, 0, 0));
+        let tree = usvg::Tree::from_str(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>"#,
+            &usvg::Options::default(),
+        )?;
+        let mut ctx = Context::new(&tree, crate::ConversionOptions::default())?;
+        let mut chunk = Chunk::new();
 
-        assert!(GradientProperties::try_from_paint(&paint).is_none());
+        assert!(matches!(
+            create_shading_pattern(&paint, &mut chunk, &mut ctx, &Transform::default()),
+            Err(UnknownError)
+        ));
+        assert!(matches!(
+            create_shading_soft_mask(
+                &paint,
+                &mut chunk,
+                &mut ctx,
+                tree.root().bounding_box(),
+            ),
+            Err(UnknownError)
+        ));
+        Ok(())
     }
 }

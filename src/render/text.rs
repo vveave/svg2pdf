@@ -298,20 +298,14 @@ pub fn render(
                 PaintOrder::FillAndStroke => {
                     path::fill(
                         fill,
-                        chunk,
-                        content,
-                        ctx,
-                        rc,
+                        (chunk, content, ctx, rc),
                         fill_operation,
                         accumulated_transform,
                         text.bounding_box(),
                     )?;
                     path::stroke(
                         stroke,
-                        chunk,
-                        content,
-                        ctx,
-                        rc,
+                        (chunk, content, ctx, rc),
                         stroke_operation,
                         accumulated_transform,
                         text.bounding_box(),
@@ -320,20 +314,14 @@ pub fn render(
                 PaintOrder::StrokeAndFill => {
                     path::stroke(
                         stroke,
-                        chunk,
-                        content,
-                        ctx,
-                        rc,
+                        (chunk, content, ctx, rc),
                         stroke_operation,
                         accumulated_transform,
                         text.bounding_box(),
                     )?;
                     path::fill(
                         fill,
-                        chunk,
-                        content,
-                        ctx,
-                        rc,
+                        (chunk, content, ctx, rc),
                         fill_operation,
                         accumulated_transform,
                         text.bounding_box(),
@@ -343,10 +331,7 @@ pub fn render(
             (None, Some(stroke)) => {
                 path::stroke(
                     stroke,
-                    chunk,
-                    content,
-                    ctx,
-                    rc,
+                    (chunk, content, ctx, rc),
                     stroke_operation,
                     accumulated_transform,
                     text.bounding_box(),
@@ -355,10 +340,7 @@ pub fn render(
             (Some(fill), None) => {
                 path::fill(
                     fill,
-                    chunk,
-                    content,
-                    ctx,
-                    rc,
+                    (chunk, content, ctx, rc),
                     fill_operation,
                     accumulated_transform,
                     text.bounding_box(),

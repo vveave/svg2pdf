@@ -1,5 +1,7 @@
+#[cfg(test)]
 #[rustfmt::skip]
 mod render;
+#[cfg(test)]
 mod api;
 
 use std::cmp::max;

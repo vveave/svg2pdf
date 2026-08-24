@@ -1,9 +1,8 @@
-#[allow(unused_imports)]
 use {
     crate::render_pdf,
     crate::FONTDB,
     crate::{convert_svg, run_test_impl},
-    pdf_writer::{Content, Finish, Name, Pdf, Rect, Ref, Str},
+    pdf_writer::{Content, Finish, Name, Pdf, Rect, Ref},
     std::collections::HashMap,
     std::path::Path,
     svg2pdf::ConversionOptions,

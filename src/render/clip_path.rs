@@ -6,9 +6,7 @@ use usvg::{ClipPath, FillRule, Group, Node, Transform};
 use super::group;
 use super::path::draw_path;
 use crate::util::context::Context;
-use crate::util::helper::{
-    bbox_to_non_zero_rect, ContentExt, NameExt, RectExt, TransformExt,
-};
+use crate::util::helper::{bbox_to_pdf_rect, ContentExt, NameExt, TransformExt};
 use crate::util::resources::ResourceContainer;
 use crate::Result;
 
@@ -191,7 +189,7 @@ fn create_complex_clip_path(
 
     content.transform(clip_path.transform().to_pdf_transform());
 
-    let pdf_bbox = bbox_to_non_zero_rect(Some(parent.bounding_box())).to_pdf_rect();
+    let pdf_bbox = bbox_to_pdf_rect(Some(parent.bounding_box()));
 
     group::render(
         clip_path.root(),

@@ -41,15 +41,15 @@ pub fn render(
         }
         ImageKind::PNG(content) => {
             let image = load_with_format(content, ImageFormat::Png)?;
-            create_transparent_image(chunk, ctx, &image, rc)
+            create_transparent_image(chunk, ctx, &image, rc)?
         }
         ImageKind::GIF(content) => {
             let image = load_with_format(content, ImageFormat::Gif)?;
-            create_transparent_image(chunk, ctx, &image, rc)
+            create_transparent_image(chunk, ctx, &image, rc)?
         }
         ImageKind::WEBP(content) => {
             let image = load_with_format(content, ImageFormat::WebP)?;
-            create_transparent_image(chunk, ctx, &image, rc)
+            create_transparent_image(chunk, ctx, &image, rc)?
         }
         // SVGs just get rendered recursively.
         ImageKind::SVG(tree) => create_svg_image(tree, chunk, ctx, rc)?,
@@ -91,7 +91,7 @@ fn create_transparent_image(
     ctx: &mut Context,
     image: &DynamicImage,
     rc: &mut ResourceContainer,
-) -> (Rc<String>, Size) {
+) -> crate::Result<(Rc<String>, Size)> {
     let color = image.color();
     let bits = color.bits_per_pixel();
     let channels = color.channel_count() as u16;
@@ -111,7 +111,7 @@ fn create_transparent_image(
             .flat_map(|&Rgb(c)| c)
             .flat_map(|x| x.to_be_bytes())
             .collect(),
-        _ => panic!("unknown number of channels={channels}"),
+        _ => return Err(InvalidImage),
     };
 
     let encoded_mask: Option<Vec<u8>> = if color.has_alpha() {
@@ -219,29 +219,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn zero_sized_raster_image_does_not_panic() {
+    fn zero_sized_raster_image_returns_invalid_image(
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         let tree = Tree::from_str(
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>"#,
             &usvg::Options::default(),
-        )
-        .unwrap();
-        let mut ctx = Context::new(&tree, crate::ConversionOptions::default()).unwrap();
+        )?;
+        let mut ctx = Context::new(&tree, crate::ConversionOptions::default())?;
         let mut chunk = Chunk::new();
         let mut resources = ResourceContainer::new();
         let image = DynamicImage::new_rgba8(0, 0);
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            create_raster_image(
-                &mut chunk,
-                &mut ctx,
-                &[],
-                Filter::FlateDecode,
-                &image,
-                None,
-                &mut resources,
-            )
-        }));
+        let result = create_raster_image(
+            &mut chunk,
+            &mut ctx,
+            &[],
+            Filter::FlateDecode,
+            &image,
+            None,
+            &mut resources,
+        );
 
-        assert!(result.is_ok());
+        assert!(matches!(result, Err(InvalidImage)));
+        Ok(())
     }
 }
